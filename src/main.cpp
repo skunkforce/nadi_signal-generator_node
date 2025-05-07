@@ -56,12 +56,16 @@ extern "C" {
         return 0;
     }
 
-    DLL_EXPORT nadi_status nadi_send(nadi_message* message){
-        static_cast<IotaProducer*>(message->instance)->send(message);
+    DLL_EXPORT nadi_status nadi_send(nadi_message* message, nadi_instance_handle instance){
+        static_cast<IotaProducer*>(instance)->send(message);
         return 0;
     }
 
     DLL_EXPORT void nadi_free(nadi_message* message){
         static_cast<IotaProducer*>(message->instance)->free(message);
+    }
+
+    DLL_EXPORT const char* nadi_descriptor(){
+        return R"({"name":"nadi-iota-producer"})";
     }
 }
