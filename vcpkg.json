@@ -1,0 +1,10 @@
+{
+    "name": "nadi-signal-generator",
+    "version": "1.0",
+    "dependencies": [
+        "pkgconf",
+        "nlohmann-json",
+        "scope-guard"
+    ]
+}
+
