@@ -9,18 +9,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Disable compiler-specific extensions
 
 include(FetchContent)
-FetchContent_Populate(
-  vcpkg
-  GIT_REPOSITORY https://github.com/microsoft/vcpkg.git
-  GIT_TAG        2024.12.16
-  SOURCE_DIR     "${CMAKE_SOURCE_DIR}/vcpkg"
+
+set(CLI11_BUILD_TESTS OFF)
+set(CLI11_BUILD_EXAMPLES OFF)
+# CLI11
+FetchContent_Declare(
+    cli11_proj
+    QUIET
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG v2.6.1
 )
 
-FetchContent_Populate(
-  CLI11
-  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.4.0
-)
+FetchContent_MakeAvailable(cli11_proj)
+
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+FetchContent_MakeAvailable(json)
+# Disable json tests (not needed)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
 
 
 # get latest git tag
@@ -40,13 +45,6 @@ endif()
 message(STATUS "Project version: ${GIT_VERSION}")
 add_definitions(-DPROJECT_VERSION="${GIT_VERSION}")
 
-list(APPEND CMAKE_PROJECT_TOP_LEVEL_INCLUDES "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
-list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_PROJECT_TOP_LEVEL_INCLUDES)
-
-set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
-
 project(${PROJECT_NAME} VERSION 0.0.1)
 
 # Define the DLL target
@@ -63,30 +61,13 @@ if(WIN32)
     )
 endif()
 
-include(cmake_helpers/BuildOptions.cmake)
-include(cmake_helpers/FindOrFetch.cmake)
-
-# Find scope-guard header
-find_path(SCOPE_GUARD_INCLUDE_DIRS "scope_guard.hpp")
-if(NOT SCOPE_GUARD_INCLUDE_DIRS)
-    message(FATAL_ERROR "scope-guard header not found. Ensure scope-guard is installed via vcpkg.")
-endif()
-
+add_subdirectory(node-agnostic-datastream-interface)
 target_include_directories(${PROJECT_NAME}
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:include>
     )
 
-find_or_fetch_package(
-  cmake_git_version 0.1 GIT_REPOSITORY
-  https://github.com/dominicpoeschko/cmake_git_version.git GIT_TAG master)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json nadi::nadi)
 
-find_package(nlohmann_json CONFIG REQUIRED)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
-
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
-
-add_subdirectory(node-agnostic-datastream-interface)
-target_link_libraries(${PROJECT_NAME} PRIVATE nadi::nadi)
