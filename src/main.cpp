@@ -1,10 +1,20 @@
 #include <nadi/nadi.h>
 #include <nadi/message_validation.hpp>
+#include <nadi/message_helpers.hpp>
 #include <nadi/unique_message.hpp>
 #include <thread>
 #include <mutex>
 #include <optional>
 #include <time.h>
+
+extern "C"{
+    void free_msg(nadi_message* message){
+        delete[] message->meta;
+        auto pd = (char*)message->data;
+        delete[] pd;
+        delete message;
+    }
+}
 
 class time_and_float_t{
     uint64_t nanoseconds_;
@@ -13,23 +23,34 @@ class time_and_float_t{
 
 
 class signal_generator_t{
-    nadi_receive_callback receive_;
+    nadi_receive_callback out_;
     void* receive_ctx_;
+    decltype(std::chrono::steady_clock::now()) last_sent_;
 
     nadi_status handle_configure(nadi_message* message){
         return NADI_OK;
     }
     public:
-    signal_generator_t(nadi_receive_callback cb, void* receive_ctx):receive_(cb),receive_ctx_(receive_ctx){}
+    signal_generator_t(nadi_receive_callback cb, void* receive_ctx):out_(cb),receive_ctx_(receive_ctx),last_sent_(std::chrono::steady_clock::now()){}
     nadi_status send(nadi_unique_message msg, unsigned channel){
         return NADI_OK;
     }
     void handle_events(){
-
+        using namespace std::chrono_literals;
+        if (std::chrono::steady_clock::now() > last_sent_ + 5s) {
+            last_sent_ += 1s;
+            auto m = nadi::helpers::heap_allocate_json_message(nadi_node_handle(this),1,nlohmann::json::parse(
+R"(
+{
+    "message": "i am the generator"
+})"
+                ),free_msg);
+            out_(m,receive_ctx_);
+        }
     }
     void free(nadi_message* message){
         delete[] message->meta;
-        delete[] message->data;
+        delete[] (char*)message->data;
         delete message;
     }
 };
