@@ -30,8 +30,8 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
     FetchContent_MakeAvailable(json)
 endif()
 
-if(NOT TARGET nadi::nadi)
-    add_subdirectory(node-agnostic-datastream-interface)
+if(NOT TARGET nadicpp::nadicpp)
+    add_subdirectory(nadicpp)
 endif()
 
 # get latest git tag
@@ -73,6 +73,6 @@ target_include_directories(${PROJECT_NAME}
             $<INSTALL_INTERFACE:include>
     )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json nadi::nadi)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json nadi::nadi nadicpp::nadicpp)
 
 
