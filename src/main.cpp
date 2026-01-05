@@ -11,40 +11,31 @@ class time_and_float_t{
     double value_;
 };
 
-extern "C"{
-    void free_json_msg_c(nadi_message* message);
+extern "C" inline void free_simple_msg_c(nadi_message* message);
+
+using allocator_t = nadicpp::message_allocator<free_simple_msg_c,10*1024>;
+
+extern "C" inline void free_simple_msg_c(nadi_message* message){
+    allocator_t* alloc = static_cast<allocator_t*>(message->user);
+    alloc->free(message);
 }
 
+
 class memory_management{
-    struct char_buf_t { 
-        char c[10*1024]; //10k bytes
-    };
-    nadicpp::pool<nadi_message> msg_pool_;
-    nadicpp::pool<char_buf_t> msg_data_pool_;
+    allocator_t allocator_;
+
     public:
-    void free_json_msg(nadi_message* msg){
-        msg_data_pool_.free(static_cast<char_buf_t*>(msg->data));
-        msg_pool_.free(msg);
-    }
     nadicpp::message allocate_json_message(nadicpp::address a, const nlohmann::json& json){
-        nadi_message* pm = msg_pool_.allocate();
-        pm->data = msg_data_pool_.allocate();
+        nadicpp::message m = allocator_.allocate();
+        auto pm = m.get();
         const auto json_str = json.dump();
         std::copy(json_str.begin(),json_str.end(),static_cast<char*>(pm->data));
         pm->meta_hash = 0;
         pm->meta = R"({"format":"json"})";
-        pm->free = free_json_msg_c;
-        pm->user = this;
-        pm->node = a.node;
-        pm->channel = a.channel;
-        nadicpp::message m(pm);
+        m.set_address(a);
+        return m;
     }
 };
-
-
-void free_json_msg_c(nadi_message* message){
-    static_cast<memory_management*>(message->user)->free_json_msg(message);
-}
 
 
 class signal_generator_t{
