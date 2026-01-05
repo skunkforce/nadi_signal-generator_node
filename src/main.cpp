@@ -29,6 +29,7 @@ class memory_management{
         nadicpp::message m = allocator_.allocate();
         auto pm = m.get();
         const auto json_str = json.dump();
+        pm->data_length = json_str.size();
         std::copy(json_str.begin(),json_str.end(),static_cast<char*>(pm->data));
         pm->meta_hash = 0;
         pm->meta = R"({"format":"json"})";
