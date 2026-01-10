@@ -45,13 +45,17 @@ class signal_generator_t{
     decltype(std::chrono::steady_clock::now()) last_sent_;
     memory_management mgmnt_;
 
-    const nadicpp::address data_out_ = {this,1};
+    const nadicpp::address data_out_;
 
     nadi_status handle_configure(nadi_message* message){
         return NADI_OK;
     }
     public:
-    signal_generator_t(nadicpp::callback cb, std::string_view init):out_(cb),last_sent_(std::chrono::steady_clock::now()){}
+    signal_generator_t(nadicpp::callback cb, nlohmann::json init):
+        out_(cb),
+        last_sent_(std::chrono::steady_clock::now()),
+        mgmnt_(),
+        data_out_(this,1){}
     nadi_status send(nadicpp::message msg, unsigned channel){
         return NADI_OK;
     }
