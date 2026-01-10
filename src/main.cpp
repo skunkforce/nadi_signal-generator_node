@@ -3,7 +3,8 @@
 #include <nadicpp/callback.hpp>
 #include <nadicpp/pool.hpp>
 #include <nlohmann/json.hpp>
-#include <nadi/message_helpers.hpp>
+#include <nadicpp/message_helpers.hpp>
+#include <nadicpp/interface.hpp>
 #include <time.h>
 
 class time_and_float_t{
@@ -50,11 +51,11 @@ class signal_generator_t{
         return NADI_OK;
     }
     public:
-    signal_generator_t(nadicpp::callback cb):out_(cb),last_sent_(std::chrono::steady_clock::now()){}
+    signal_generator_t(nadicpp::callback cb, std::string_view init):out_(cb),last_sent_(std::chrono::steady_clock::now()){}
     nadi_status send(nadicpp::message msg, unsigned channel){
         return NADI_OK;
     }
-    void handle_events(){
+    nadi_status handle_events(){
         using namespace std::chrono_literals;
         if (std::chrono::steady_clock::now() > last_sent_ + 5s) {
             last_sent_ += 1s;
@@ -63,33 +64,9 @@ class signal_generator_t{
             auto m = mgmnt_.allocate_json_message(data_out_, std::move(jmsg));
             out_(std::move(m));
         }
-    }
-};
-
-
-
-extern "C" {
-    DLL_EXPORT nadi_status nadi_init(nadi_node_handle* node, nadi_receive_callback cb, void* cb_ctx){
-        *node = new signal_generator_t(nadicpp::callback(cb, cb_ctx));
         return NADI_OK;
     }
-
-    DLL_EXPORT nadi_status nadi_deinit(nadi_node_handle node){
-        delete static_cast<signal_generator_t*>(node);
-        return NADI_OK;
-    }
-
-    DLL_EXPORT nadi_status nadi_send(nadi_message* message, nadi_node_handle node, unsigned int target_channel){
-        static_cast<signal_generator_t*>(node)->send(nadicpp::message(message), target_channel);
-        return NADI_OK;
-    }
-
-    DLL_EXPORT nadi_status nadi_handle_events(nadi_node_handle node){
-        static_cast<signal_generator_t*>(node)->handle_events();
-        return NADI_OK;
-    }
-
-    DLL_EXPORT nadi_status nadi_descriptor(char * descriptor, size_t* length){
+    static std::string descriptor(){
         using namespace nlohmann;
         json j;
         j["name"] = "nadi-signal-generator";
@@ -105,12 +82,7 @@ extern "C" {
         outputs[0]["name"] = "generator_output";
         outputs[0]["formats"] = {"float-nanoseconds"};
         j["outputs"] = outputs;
-        const std::string js = j.dump();
-        if(js.size() > *length){
-            return NADI_BUFFER_TOO_SMALL;
-        }
-        *length = js.size();
-        std::copy(js.begin(),js.end(),descriptor);
-        return NADI_OK;
     }
-}
+};
+
+NADI_WRAP_C_LIBRARY_INTERFACE(signal_generator_t)
